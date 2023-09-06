@@ -33,6 +33,9 @@ import pdf_table2json
 python a.py -i "pdf_path/pdf_name.pdf" -o "output_path/"
 ```
 
+#### Colab
+[![Open In Colab](https://colab.research.google.com/github/yousojeong/pdf-table2json/blob/main/colab_example.ipynb)
+
 ## License
 - GPL-3.0 license
 
