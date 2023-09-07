@@ -24,17 +24,20 @@ pip install pdf-table2json
 ## Example
 #### import
 ```py
-import pdf_table2json
+import pdf_table2json.converter as converter
 
+path = "PATH/PDF_NAME.pdf"
+result = converter.main(path)
+print(result)
 ```
 
 #### CLI
 ```py
-python a.py -i "pdf_path/pdf_name.pdf" -o "output_path/"
+python a.py -i "pdf_path/pdf_name.pdf" -o "output_path/" -j "" -p ""
 ```
 
 #### Colab
-[![Open In Colab](https://colab.research.google.com/github/yousojeong/pdf-table2json/blob/main/colab_example.ipynb)
+[![Open In Colab](https://colab.research.google.com/github/yousojeong/pdf-table2json/blob/main/colab_example.ipynb)]
 
 ## License
 - GPL-3.0 license
