@@ -6,12 +6,12 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Upload Python Package
+name: Upload Python Package PYPI
 
 on:
   push:
     branches:
-      - ['main']
+      - main
   release:
     types: [published]
 
@@ -28,7 +28,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
-        python-version: '3.x'
+        python-version: '3.8'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -40,4 +40,4 @@ jobs:
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
-        password: ${{pypi-AgEIcHlwaS5vcmcCJDkwM2E1OWQ2LTQ5MjMtNDExOS05MjUwLTMwZGJjNTdjOGI5MQACFlsxLFsicGRmLXRhYmxlMmpzb24iXV0AAixbMixbIjY5M2JlN2ViLTVhMDEtNGFmMi05NTFmLTA5YjJlNTE4MDhiYiJdXQAABiCXw16yPR_VaT-td_g21Hu1EJ4tSXHAodeTZdpJPq5hqw}}
+        password: ${{ secrets.TWINTE_PASSWORD }}

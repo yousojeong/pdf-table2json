@@ -12,9 +12,9 @@ setup(
     long_description_content_type="text/markdown",
     author='hielosan',
     author_email='hielosan@naver.com',
-    url='https://github.com/yousojeong/pdf-table-extract/',
+    url='https://github.com/yousojeong/pdf_table2json/',
     project_urls={
-        "Bug Tracker": "https://github.com/yousojeong/pdf-table-extract/issues",
+        "Bug Tracker": "https://github.com/yousojeong/pdf_table2json/issues",
     },
     install_requires=[
         'opencv-python',
@@ -29,7 +29,6 @@ setup(
     zip_safe=True,
     classifiers=[
         'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
     ],
 )
