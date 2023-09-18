@@ -4,9 +4,11 @@ import cv2
 import numpy as np
 import json
 import argparse
+import re
 
 import fitz  # PyMuPDF # text extractor
-from . import util  # package # utf-8
+# from . import util  # package # utf-8
+import util  # package # utf-8
 
 
 def f_remove_watermark(image, target_color):
@@ -56,10 +58,45 @@ def f_process_list(input_list):
     if current_group:
         result_list.append(current_group)
 
-
+    
     return result_list
 
 
+def f_test(result_list):
+    print("==========================")
+    print(result_list)
+
+
+def f_format_conversion(total_data_list):
+    final_result = []
+
+    for data in total_data_list:
+        all_columns = [item['columns'] for item in data]
+
+        for item in all_columns:
+            if item and len(item) > 0:
+                
+                if len(item) == 1:
+                    result = [{'th': data[0] for data in item}]
+                    final_result.extend(result)
+                else:
+                    result = []
+
+                    header = item[0]
+
+                    for item in item[1:]:
+                        data_dict = {}
+                        for i, value in enumerate(item):
+                            key = header[i]
+                            data_dict[key] = value
+                        result.append(data_dict)
+
+                    final_result.extend(result)
+
+    return final_result
+
+
+# PDF TO Image
 def f_convert_pdf_to_images(pdf_path, output_dir):
     pdf_document = fitz.open(pdf_path)
 
@@ -68,7 +105,7 @@ def f_convert_pdf_to_images(pdf_path, output_dir):
 
     image_paths = []
 
-    for page_number in range(pdf_document.page_count):
+    for page_number in range(pdf_document.page_count-1):
         page = pdf_document[page_number]
         pixmap = page.get_pixmap(matrix=fitz.Matrix(300 / 72, 300 / 72))  # DPI
 
@@ -86,6 +123,14 @@ def path_parse(input_pdf_path):
     name, _ = os.path.splitext(name_extension)
 
     return dir_path, name_extension, name
+
+
+def filter_characters(input_string):
+    characters_to_exclude = ['열\n', '열 \n', '람\n', '람 \n', '용\n', '용 \n', '열 람\n', '열 람 \n', '람 용\n', '람 용 \n', '열 람 용\n', '열 람 용 \n', '열람\n', '열람 \n', '람용\n', '람용 \n', '열람용\n', '열람용 \n']
+    pattern = '|'.join(map(re.escape, characters_to_exclude))
+    filtered_string = re.sub(pattern, '', input_string)
+
+    return filtered_string
 
 
 def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out=None):
@@ -106,7 +151,7 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
     
     image_paths, pdf_document, page_number = f_convert_pdf_to_images(pdf_path, output_dir)
 
-    accumulated_json_data = []
+    total_data_list = []
 
     for page_number, image_path in enumerate(image_paths, start=0):
 
@@ -183,6 +228,7 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
                 pdf_y2 = (y_global + h_cell) * (pdf_page_height / image_height)
 
                 text = pdf_page.get_text("text", clip=(pdf_x1, pdf_y1, pdf_x2, pdf_y2))
+                text = filter_characters(text) # 텍스트 필터링
 
                 if y_global not in cell_rows:
                     cell_rows[y_global] = []
@@ -200,29 +246,77 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
                     new_list = []
 
                 new_list = f_process_list(list(cell_rows.values()))
+            #print(new_list)
 
+            #f_test(reversed(new_list))
+
+            '''
+            for idx, group in enumerate(new_list):
+                
+                print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                if(len(group)!=0):
+                    height_values = [item["height"] for row in group for item in row]
+                    print(height_values)
+
+                    first_value = height_values[0]
+                    check_list = [i for i, value in enumerate(height_values) if value != first_value]
+                    print(check_list)
+
+                    group = [list(reversed())]
+
+                else :
+                    print("[]")
+            '''
+
+            # print(new_list)
 
             data_list = []
             for idx, group in enumerate(new_list):
+
+                '''
+                # 작업하던 부분 
+                # 위에 주석 부분은 height 비교해서 check_list 값 만드는 거
+
+                for sublist in group:
+                    reversed_dict_list = list(reversed(sublist))  # 리스트를 뒤집음
+                    #print(reversed_dict_list)
+                    #for data in reversed_dict_list:
+                    #    print(data)
+
+                    row_length = len(reversed_dict_list[0])
+                    grouped_values = [list(reversed_dict_list[i:i + row_length]) for i in range(0, len(reversed_dict_list), row_length)]
+                    # print("----------------------------")
+                    # print(grouped_values)
+                    data_list.append(grouped_values)
+                    # data_list.append({"row": str(idx), "columns": grouped_values})
+                '''
+
                 text_values = [item["text"] for row in group for item in row]
                 row_length = len(group[0])
                 grouped_text_values = [list(reversed(text_values[i:i + row_length])) for i in range(0, len(text_values), row_length)]
-                data_list.append({"row": idx, "columns": grouped_text_values})
+                data_list.append({"row": str(idx), "columns": grouped_text_values})
+                #print(type(data_list))
+
+            # print(data_list)
             json_data = json.dumps(data_list, indent=4, ensure_ascii=False)
-
+            #print("------------------------------------------------------")
             #print(json_data)
+            total_data_list.append(data_list)
+            #print(total_data_list)
 
-            accumulated_json_data.append(json_data)
-
-            prev_column_count = None
-            row_list = []
+            #prev_column_count = None
+            #row_list = []
 
         image = None
 
         if processed_img_out:
             f_make_processed_img(line_image_dir, page_number, line_image)
 
-    json_data_combined = json.dumps(accumulated_json_data, indent=4, ensure_ascii=False)
+    # total_data_list = f_format_conversion(total_data_list)
+
+    # print(total_data_list)
+
+    json_data_combined = json.dumps(total_data_list, indent=4, ensure_ascii=False)
     
     if json_file_out:
         f_make_json_file(json_data_combined, output_dir, pdf_name)
@@ -233,6 +327,7 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
 
     return json_data_combined
 
+
 def f_make_processed_img(output_dir, page_number, processed_image):
     line_image_path = os.path.join(output_dir, f"processed_image_{page_number + 1}.png")
     util.utf_imwrite(line_image_path, processed_image)
@@ -240,6 +335,7 @@ def f_make_processed_img(output_dir, page_number, processed_image):
 
 
 def f_make_json_file(data, output_dir, pdf_name):
+    print(output_dir)
     combined_output_path = output_dir + pdf_name + ".json"
     with open(combined_output_path, "w", encoding="utf-8") as combined_output_file:
         combined_output_file.write(data)
