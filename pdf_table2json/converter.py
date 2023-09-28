@@ -4,11 +4,11 @@ import cv2
 import numpy as np
 import json
 import argparse
-import re
+import re 
+import fitz  # PyMuPDF text-extractor
 
-import fitz  # PyMuPDF # text extractor
-# from . import util  # package # utf-8
-import util  # package # utf-8
+from . import util  # pypi
+# import util  # package # utf-8 # local
 
 
 def f_remove_watermark(image, target_color):
@@ -58,13 +58,7 @@ def f_process_list(input_list):
     if current_group:
         result_list.append(current_group)
 
-    
     return result_list
-
-
-def f_test(result_list):
-    print("==========================")
-    print(result_list)
 
 
 def f_format_conversion(total_data_list):
@@ -81,13 +75,12 @@ def f_format_conversion(total_data_list):
                     final_result.extend(result)
                 else:
                     result = []
-
                     header = item[0]
 
                     for item in item[1:]:
                         data_dict = {}
                         for i, value in enumerate(item):
-                            key = header[i]
+                            key = header[i]  
                             data_dict[key] = value
                         result.append(data_dict)
 
@@ -105,7 +98,7 @@ def f_convert_pdf_to_images(pdf_path, output_dir):
 
     image_paths = []
 
-    for page_number in range(pdf_document.page_count-1):
+    for page_number in range(pdf_document.page_count):
         page = pdf_document[page_number]
         pixmap = page.get_pixmap(matrix=fitz.Matrix(300 / 72, 300 / 72))  # DPI
 
@@ -118,38 +111,20 @@ def f_convert_pdf_to_images(pdf_path, output_dir):
     return image_paths, pdf_document, page_number 
 
 
-def path_parse(input_pdf_path):
-    dir_path, name_extension = os.path.split(input_pdf_path)
-    name, _ = os.path.splitext(name_extension)
-
-    return dir_path, name_extension, name
-
-
 def filter_characters(input_string):
-    characters_to_exclude = ['열\n', '열 \n', '람\n', '람 \n', '용\n', '용 \n', '열 람\n', '열 람 \n', '람 용\n', '람 용 \n', '열 람 용\n', '열 람 용 \n', '열람\n', '열람 \n', '람용\n', '람용 \n', '열람용\n', '열람용 \n']
+    characters_to_exclude = []
     pattern = '|'.join(map(re.escape, characters_to_exclude))
     filtered_string = re.sub(pattern, '', input_string)
 
     return filtered_string
 
 
-def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out=None):
+def main(input_path, json_file_out=False, image_file_out=False):
 
-    if output_path is None:
-        output_path = input_pdf_path
-
-    dir_path, name_extension, name = path_parse(input_pdf_path)
-    dir_path_out, _, _ = path_parse(output_path)
+    dir_path, _, pdf_name = path_parse(input_path)
+    out_path = dir_path + "/" + pdf_name
     
-    pdf_path = input_pdf_path
-    pdf_name = name_extension
-    output_dir = dir_path_out + "/" + name + "/" 
-
-    if processed_img_out:
-        line_image_dir =  output_dir + "/processed_images/"
-        os.makedirs(line_image_dir, exist_ok=True)
-    
-    image_paths, pdf_document, page_number = f_convert_pdf_to_images(pdf_path, output_dir)
+    image_paths, pdf_document, page_number = f_convert_pdf_to_images(input_path, out_path)
 
     total_data_list = []
 
@@ -158,8 +133,6 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
         image = util.utf_imread(image_path)
         
         image_height, image_width, _ = image.shape
-
-        #precessed_image = f_image_preocessing(image)
 
         added_border_image = f_add_border_lines(image)
 
@@ -195,8 +168,6 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
         pdf_page_width = pdf_page.rect.width
         pdf_page_height = pdf_page.rect.height
 
-        prev_column_count = None
-        row_list = []
 
         for table_number, (x, y, w, h) in enumerate(tables, start=1):
 
@@ -228,7 +199,7 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
                 pdf_y2 = (y_global + h_cell) * (pdf_page_height / image_height)
 
                 text = pdf_page.get_text("text", clip=(pdf_x1, pdf_y1, pdf_x2, pdf_y2))
-                text = filter_characters(text) # 텍스트 필터링
+                # text = filter_characters(text) 
 
                 if y_global not in cell_rows:
                     cell_rows[y_global] = []
@@ -246,131 +217,79 @@ def main(input_pdf_path, output_path=None, json_file_out=None, processed_img_out
                     new_list = []
 
                 new_list = f_process_list(list(cell_rows.values()))
-            #print(new_list)
-
-            #f_test(reversed(new_list))
-
-            '''
-            for idx, group in enumerate(new_list):
-                
-                print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                if(len(group)!=0):
-                    height_values = [item["height"] for row in group for item in row]
-                    print(height_values)
-
-                    first_value = height_values[0]
-                    check_list = [i for i, value in enumerate(height_values) if value != first_value]
-                    print(check_list)
-
-                    group = [list(reversed())]
-
-                else :
-                    print("[]")
-            '''
-
-            # print(new_list)
 
             data_list = []
             for idx, group in enumerate(new_list):
-
-                '''
-                # 작업하던 부분 
-                # 위에 주석 부분은 height 비교해서 check_list 값 만드는 거
-
-                for sublist in group:
-                    reversed_dict_list = list(reversed(sublist))  # 리스트를 뒤집음
-                    #print(reversed_dict_list)
-                    #for data in reversed_dict_list:
-                    #    print(data)
-
-                    row_length = len(reversed_dict_list[0])
-                    grouped_values = [list(reversed_dict_list[i:i + row_length]) for i in range(0, len(reversed_dict_list), row_length)]
-                    # print("----------------------------")
-                    # print(grouped_values)
-                    data_list.append(grouped_values)
-                    # data_list.append({"row": str(idx), "columns": grouped_values})
-                '''
 
                 text_values = [item["text"] for row in group for item in row]
                 row_length = len(group[0])
                 grouped_text_values = [list(reversed(text_values[i:i + row_length])) for i in range(0, len(text_values), row_length)]
                 data_list.append({"row": str(idx), "columns": grouped_text_values})
-                #print(type(data_list))
+            
 
-            # print(data_list)
-            json_data = json.dumps(data_list, indent=4, ensure_ascii=False)
-            #print("------------------------------------------------------")
-            #print(json_data)
             total_data_list.append(data_list)
-            #print(total_data_list)
-
-            #prev_column_count = None
-            #row_list = []
 
         image = None
 
-        if processed_img_out:
-            f_make_processed_img(line_image_dir, page_number, line_image)
+        if image_file_out:
+            f_make_processed_img(out_path, page_number, line_image)
 
-    # total_data_list = f_format_conversion(total_data_list)
-
-    # print(total_data_list)
+    total_data_list = f_format_conversion(total_data_list)
 
     json_data_combined = json.dumps(total_data_list, indent=4, ensure_ascii=False)
-    
+
     if json_file_out:
-        f_make_json_file(json_data_combined, output_dir, pdf_name)
+        f_make_json_file(json_data_combined, out_path, pdf_name)
 
     pdf_document.close()
-
-    # f_delete_directory(output_dir)
 
     return json_data_combined
 
 
 def f_make_processed_img(output_dir, page_number, processed_image):
-    line_image_path = os.path.join(output_dir, f"processed_image_{page_number + 1}.png")
+    line_image_path = os.path.join(output_dir, f"p_image_{page_number + 1}.png")
     util.utf_imwrite(line_image_path, processed_image)
-    print(f"Line image for page {page_number + 1} saved to {line_image_path}")
+    print(f">>> Processed image for page {page_number + 1} saved to {line_image_path}")
 
 
 def f_make_json_file(data, output_dir, pdf_name):
-    print(output_dir)
-    combined_output_path = output_dir + pdf_name + ".json"
-    with open(combined_output_path, "w", encoding="utf-8") as combined_output_file:
+    output_path = output_dir + "/" + pdf_name + ".json"
+    with open(output_path, "w", encoding="utf-8") as combined_output_file:
         combined_output_file.write(data)
-    print("JSON data saved to", combined_output_path)
+    print("))) JSON data saved to", output_path)
 
 
 def f_delete_directory(path):
     try:
         shutil.rmtree(path)
-        print(f"Removed directory : {path} ")
+        print(f">> Removed directory : {path} ")
     except Exception as e:
-        print(f"Error removing directory: {str(e)}")
+        print(f">> Error removing directory: {str(e)}")
 
-        
+
 def is_valid_pdf(file_path):
     file_extension = os.path.splitext(file_path)[-1].lower()
+
     return file_extension == '.pdf'
+
+
+def path_parse(input_pdf_path):
+    dir_path, name_extension = os.path.split(input_pdf_path)
+    name, _ = os.path.splitext(name_extension)
+
+    return dir_path, name_extension, name
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract tables from PDF files To JSON data")
     parser.add_argument("-i", "--input", required=True, help="Input PDF file path")
-    parser.add_argument("-o", "--output", default=None, help="[Optional] Output directory to save the extracted datas")
-    parser.add_argument("-j", "--json_file", default=None, help="[Optional] JSON Data file out")
-    parser.add_argument("-p", "--image", default=None, help="[Optional] Processed Image file out")
+    parser.add_argument("-j", "--json_file", action="store_true", help="[Optional] Create JSON Data file")
+    parser.add_argument("-o", "--image_file", action="store_true", help="[Optional] Save Image Data file")
     args = parser.parse_args()
 
     input_path = args.input
-    output_dir = args.output
-    json_file_out = args.json_file
-    processed_img_out = args.image
 
     if not is_valid_pdf(input_path):
         print("Input file is not a valid PDF file.")
-    elif not (output_dir or json_file_out or processed_img_out):
-        main(input_path, output_dir, None, None)
-        print("No output path specified. PDF will not be saved.")
     else:
-        main(input_path, output_dir, json_file_out, processed_img_out)
+        main(input_path, args.json_file, args.image_file)
