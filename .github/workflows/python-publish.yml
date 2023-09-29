@@ -39,7 +39,7 @@ jobs:
       if: github.ref == 'refs/heads/main'
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       env:
-        PDFTABLE2JSON_PASSWORD: ${{ secrets.PDFTABLE2JSON}}
+        PYPI_PDFTABLE2JSON: ${{ secrets.PYPI_PDFTABLE2JSON}}
       with:
         user: __token__
-        password: $PDFTABLE2JSON_PASSWORD
+        password: $PYPI_PDFTABLE2JSON
