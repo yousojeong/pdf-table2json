@@ -38,8 +38,6 @@ jobs:
     - name: Publish package
       if: github.ref == 'refs/heads/main'
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      env:
-        PYPI_PDFTABLE2JSON: ${{ secrets.PYPI_PDFTABLE2JSON}}
       with:
         user: __token__
-        password: $PYPI_PDFTABLE2JSON
+        password: ${{ secrets.PYPI_PDFTABLE2JSON}}
