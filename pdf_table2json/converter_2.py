@@ -7,8 +7,12 @@ import argparse
 import re 
 import fitz # PyMuPDF text-extractor
 
-# from . import util  # pypi
-import util  # local
+try:
+    from . import util
+    from . import merge
+except ImportError:
+    import util
+    import merge
 
 
 # Watermark removal, color based
@@ -47,64 +51,6 @@ def f_add_border_lines(image, target_color):
 
 
     return image
-
-
-# Make Group
-# ex) {"row": "", "groups" : [[],[]]}
-# Group based on the number of items present in the same row
-def f_process_list(input_list):
-    result_list = []
-    current_group = []
-    prev_length = None
-
-    for item in input_list:
-        current_length = len(item)
-
-        if prev_length is None:
-            prev_length = current_length
-            current_group = [item]
-        elif prev_length == current_length:
-            current_group.append(item)
-        else:
-            result_list.append(current_group)
-            current_group = [item]
-            prev_length = current_length
-
-    if current_group:
-        result_list.append(current_group)
-
-    return result_list
-
-
-# Change format
-# Return in dictionary form with 0 groups set to keys and the remaining values set to values
-# ex) {"header":"data", "header":"data"}
-# if the group has one value, create as {"th": ["",""]} for table name
-def f_format_conversion(total_data_list):
-    final_result = []
-
-    for data in total_data_list:
-        all_groups = [item['groups'] for item in data]
-        for item in all_groups:
-            if item and len(item) > 0:
-                if len(item) == 1:
-                    result = [{'th': data for data in item}]
-                    final_result.extend(result)
-                else:
-                    result = []
-                    header = item[0]
-
-                    for item in item[1:]:
-                        data_dict = {}
-                        for i, value in enumerate(item):
-                            key = header[i]
-                            data_dict[key] = value
-                        result.append(data_dict)
-
-                    final_result.extend(result)
-
-
-    return final_result
 
 
 # PDF TO Image
@@ -234,16 +180,17 @@ def main(input_path, json_file_out=False, image_file_out=False):
                 if idx == 0:
                     new_list = []
 
-                new_list = f_process_list(list(cell_rows.values()))
+                new_list = util.f_group_list(list(cell_rows.values()))
 
             data_list = []
             for idx, group in enumerate(new_list):
-
-                text_values = [item["text"] for row in group for item in row]
-                row_length = len(group[0])
-                grouped_text_values = [list(reversed(text_values[i:i + row_length])) for i in range(0, len(text_values), row_length)]
-                data_list.append({"row": str(idx), "groups": grouped_text_values})
-
+                
+                for sublist in group:
+                    reversed_dict_list = list(reversed(sublist))
+                    row_length = len(reversed_dict_list[0])
+                    grouped_values = [list(reversed_dict_list[i:i + row_length]) for i in range(0, len(reversed_dict_list), row_length)]
+                    data_list.append({"row": str(idx), "groups": grouped_values})
+                
             total_data_list.append(data_list)
 
         image = None
@@ -252,8 +199,34 @@ def main(input_path, json_file_out=False, image_file_out=False):
         if image_file_out:
             f_make_processed_img(out_path, page_number, line_image)
 
-    # Change format
-    total_data_list = f_format_conversion(total_data_list)
+
+    # Subheader processing (Remove the upper header and connect the lower header to display.)
+    '''
+    ex) | th1 |     th2     |
+        |     | sub1 | sub2 |  
+    '''
+    # If the header is divided as above and a subheader is created, it is sorted as follows
+    # >> 'th1', 'sub1', 'sub2'
+    # (removed 'th2')
+    total_data_list = merge.f_colspan(total_data_list)
+
+    # Format with separated columns in table
+    '''
+     ex) | no |  th |
+         | 1  |  a  |
+         | -- | --- |
+         |    |  b  |
+         | 2  | --- |
+         |    |  c  |
+    '''
+    # The data in the first header is the same, separated by line breaks.
+    # >> '1', 'a', '2', 'b@c'
+    # (Concatenate the following data with a delimiter "@")
+    # (The first value must not be divided)
+    total_data_list = merge.f_rowspan(total_data_list)
+
+    # Change format ('header' : 'data')
+    total_data_list = util.f_format_conversion(total_data_list)
 
     # Make JSON format
     json_data_combined = json.dumps(total_data_list, indent=4, ensure_ascii=False)

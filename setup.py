@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='pdf_table2json',
-    version='1.0.1',
+    version='2.0.0',
     license = 'GNU AFFERO GPL 3.0',
     description='PDF Table to JSON Converter',
     long_description=long_description,
