@@ -7,8 +7,12 @@ import argparse
 import re 
 import fitz # PyMuPDF text-extractor
 
-# from . import util  # pypi
-import util  # local
+try:
+    from . import util
+    from . import merge
+except ImportError:
+    import util
+    import merge
 
 
 # Watermark removal, color based
